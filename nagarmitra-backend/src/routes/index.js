@@ -5,6 +5,7 @@ import mediaRouter from './media.js';
 import communityRouter from './community.js';
 import usersRouter from './users.js';
 import analyticsRouter from './analytics.js';
+import detectRouter from './detect.js';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/media', mediaRouter);
 router.use('/community', communityRouter);
 router.use('/users', usersRouter);
 router.use('/analytics', analyticsRouter);
+router.use('/detect', detectRouter);
 
 export default router;

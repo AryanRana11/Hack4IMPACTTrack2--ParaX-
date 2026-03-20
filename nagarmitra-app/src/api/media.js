@@ -7,16 +7,17 @@ export async function getPresignedUrl({ contentType, prefix = 'complaints/' }) {
 }
 
 export async function uploadToPresignedUrl({ uploadUrl, fileUri, contentType }) {
-  // Some environments may not expose FileSystemUploadType; default to binary upload without the flag
-  const options = {
-    httpMethod: 'PUT',
+  // Use standard fetch and Blob to avoid network errors associated with expo legacy uploadAsync
+  const response = await fetch(fileUri);
+  const blob = await response.blob();
+  
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
     headers: { 'Content-Type': contentType },
-  };
-  if (typeof FileSystemUploadType !== 'undefined' && FileSystemUploadType.BINARY_CONTENT) {
-    options.uploadType = FileSystemUploadType.BINARY_CONTENT;
-  }
-  const res = await uploadAsync(uploadUrl, fileUri, options);
-  if (res.status !== 200) {
+    body: blob,
+  });
+  
+  if (!res.ok) {
     throw new Error(`Upload failed: ${res.status}`);
   }
   return true;

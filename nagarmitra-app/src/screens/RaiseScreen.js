@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, Image, TouchableOpacity, StyleSheet, FlatList, Modal } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, Image, TouchableOpacity, StyleSheet, FlatList, Modal, ActivityIndicator } from 'react-native';
 import { auth } from '../lib/firebase';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -7,7 +7,7 @@ import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { apiPost } from '../api/client';
+import { apiPost, detectAPI } from '../api/client';
 import { CATEGORIES, PRIORITIES } from '../constants';
 import { getPresignedUrl, uploadToPresignedUrl } from '../api/media';
 
@@ -27,6 +27,8 @@ export default function RaiseScreen({ navigation }) {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [detectingCategory, setDetectingCategory] = useState(false);
+  const [detectedConfidence, setDetectedConfidence] = useState(null);
   const [reportId, setReportId] = useState('');
   const user = auth.currentUser;
 
@@ -117,6 +119,28 @@ export default function RaiseScreen({ navigation }) {
     setVoiceKey(null);
   };
 
+  const detectImageCategory = async (uri) => {
+    try {
+      setDetectingCategory(true);
+      const result = await detectAPI.detectImage(uri);
+      
+      if (result && result.category && result.category !== 'miscellaneous') {
+        // If the category matches one of the app's categories (case sensitive check or mapping)
+        const matchedCategory = CATEGORIES.find(c => c.toLowerCase() === result.category.toLowerCase());
+        if (matchedCategory) {
+          setCategory(matchedCategory);
+        } else if (CATEGORIES.includes(result.category)) {
+          setCategory(result.category);
+        }
+        setDetectedConfidence(result.confidence);
+      }
+    } catch (err) {
+      console.log('Detection error:', err);
+    } finally {
+      setDetectingCategory(false);
+    }
+  };
+
   const pickImage = async () => {
     if (images.length >= 5) {
       Alert.alert('Limit Reached', 'You can upload maximum 5 images per complaint.');
@@ -140,6 +164,10 @@ export default function RaiseScreen({ navigation }) {
         key: null
       }));
       setImages(prev => [...prev, ...newImages]);
+      
+      if (res.assets.length > 0) {
+        detectImageCategory(res.assets[0].uri);
+      }
     }
   };
 
@@ -164,6 +192,7 @@ export default function RaiseScreen({ navigation }) {
         key: null
       };
       setImages(prev => [...prev, newImage]);
+      detectImageCategory(res.assets[0].uri);
     }
   };
 
@@ -455,6 +484,22 @@ export default function RaiseScreen({ navigation }) {
             <Text style={styles.categoryText}>{category}</Text>
             <Ionicons name="chevron-down" size={20} color="#666" />
           </TouchableOpacity>
+          
+          {/* AI Detection feedback */}
+          {detectingCategory && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <ActivityIndicator size="small" color="#FF4500" />
+              <Text style={{ marginLeft: 8, color: '#666', fontSize: 13 }}>AI is analyzing your image...</Text>
+            </View>
+          )}
+          {!detectingCategory && detectedConfidence !== null && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <Ionicons name="sparkles" size={16} color="#28A745" />
+              <Text style={{ marginLeft: 6, color: '#28A745', fontSize: 13, fontWeight: '500' }}>
+                AI Detected: {category} ({Math.round(detectedConfidence * 100)}% confidence)
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Priority Section */}

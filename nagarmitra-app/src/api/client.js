@@ -153,3 +153,38 @@ export const complaintAPI = {
   updateStatus: (id, status, reason, notes) => 
     apiPut(`/api/v1/complaints/${id}/status`, { status, reason, notes }),
 };
+
+// AI Detection API functions
+export const detectAPI = {
+  detectImage: async (imageUri) => {
+    const formData = new FormData();
+    const filename = imageUri.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image`;
+
+    formData.append('image', { uri: imageUri, name: filename, type });
+
+    // Use safeRead and authHeaders inline (manually using fetch because we need multipart/form-data)
+    let headers = { 'Content-Type': 'multipart/form-data' };
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (e) {}
+
+    const res = await fetch(`${BASE_URL}/api/v1/detect`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      let msg = '';
+      try { msg = await res.text(); } catch (e) {}
+      throw new Error(`Detection failed: ${res.status} ${msg}`);
+    }
+    return res.json();
+  }
+};
