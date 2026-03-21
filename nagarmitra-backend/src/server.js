@@ -41,14 +41,16 @@ console.log('[FIREBASE ENV DEBUG]', {
 
 import http from 'http';
 // IMPORTANT: dynamically import modules that depend on env AFTER dotenv has run
-let app, connectDB, logger;
+let app, connectDB, logger, initTelegramBot;
 async function loadModules() {
   const appMod = await import('./app.js');
   const dbMod = await import('./config/db.js');
   const logMod = await import('./utils/logger.js');
+  const tgMod = await import('./utils/telegramBot.js');
   app = appMod.default;
   connectDB = dbMod.connectDB;
   logger = logMod.logger;
+  initTelegramBot = tgMod.initTelegramBot;
 }
 
 const PORT = process.env.PORT || 4000;
@@ -76,6 +78,9 @@ async function start() {
       logger.info(`🚀 NagarMitra API listening on port ${PORT}`);
       logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`🌐 CORS Origins: ${process.env.CORS_ORIGIN}`);
+      
+      // Initialize Telegram Bot
+      initTelegramBot();
     });
 
     // Handle unhandled promise rejections
