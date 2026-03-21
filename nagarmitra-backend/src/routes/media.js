@@ -51,7 +51,7 @@ router.post("/presign", requireFirebaseAuth({ requireVerified: false }), async (
       // Return mock response for development
       // Use the host from the request instead of localhost for mobile apps
       const host = req.get('host') || `localhost:${process.env.PORT || 4000}`;
-      const protocol = req.protocol || 'http';
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
       
       return res.json({
         bucket: "nagarmitra-dev-mock",
